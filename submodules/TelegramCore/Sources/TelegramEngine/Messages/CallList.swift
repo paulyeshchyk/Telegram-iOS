@@ -7,7 +7,7 @@ public final class EngineCallList {
     }
 
     public enum Item {
-        case message(message: EngineMessage, group: [EngineMessage])
+        case message(message: EngineMessage, group: [EngineMessage], worldClockText: String)
         case hole(EngineMessage.Index)
     }
 

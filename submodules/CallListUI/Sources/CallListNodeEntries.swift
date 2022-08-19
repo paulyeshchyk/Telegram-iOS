@@ -79,7 +79,7 @@ enum CallListNodeEntry: Comparable, Identifiable {
     case displayTab(PresentationTheme, String, Bool)
     case displayTabInfo(PresentationTheme, String)
     case groupCall(peer: EnginePeer, editing: Bool, isActive: Bool)
-    case messageEntry(topMessage: EngineMessage, messages: [EngineMessage], theme: PresentationTheme, strings: PresentationStrings, dateTimeFormat: PresentationDateTimeFormat, editing: Bool, hasActiveRevealControls: Bool, displayHeader: Bool, missed: Bool)
+    case messageEntry(topMessage: EngineMessage, messages: [EngineMessage], worldClockText: String, theme: PresentationTheme, strings: PresentationStrings, dateTimeFormat: PresentationDateTimeFormat, editing: Bool, hasActiveRevealControls: Bool, displayHeader: Bool, missed: Bool)
     case holeEntry(index: EngineMessage.Index, theme: PresentationTheme)
     
     var sortIndex: SortIndex {
@@ -90,7 +90,7 @@ enum CallListNodeEntry: Comparable, Identifiable {
             return .displayTabInfo
         case let .groupCall(peer, _, _):
             return .groupCall(peer.id, peer.compactDisplayTitle)
-        case let .messageEntry(message, _, _, _, _, _, _, _, _):
+        case let .messageEntry(message, _, _, _, _, _, _, _, _, _):
             return .message(message.index)
         case let .holeEntry(index, _):
             return .hole(index)
@@ -105,7 +105,7 @@ enum CallListNodeEntry: Comparable, Identifiable {
             return .setting(1)
         case let .groupCall(peer, _, _):
             return .groupCall(peer.id)
-        case let .messageEntry(message, _, _, _, _, _, _, _, _):
+        case let .messageEntry(message, _, _, _, _, _, _, _, _, _):
             return .message(message.index)
         case let .holeEntry(index, _):
             return .hole(index)
@@ -145,8 +145,8 @@ enum CallListNodeEntry: Comparable, Identifiable {
                 } else {
                     return false
                 }
-            case let .messageEntry(lhsMessage, lhsMessages, lhsTheme, lhsStrings, lhsDateTimeFormat, lhsEditing, lhsHasRevealControls, lhsDisplayHeader, lhsMissed):
-                if case let .messageEntry(rhsMessage, rhsMessages, rhsTheme, rhsStrings, rhsDateTimeFormat, rhsEditing, rhsHasRevealControls, rhsDisplayHeader, rhsMissed) = rhs {
+            case let .messageEntry(lhsMessage, lhsMessages, _, lhsTheme, lhsStrings, lhsDateTimeFormat, lhsEditing, lhsHasRevealControls, lhsDisplayHeader, lhsMissed):
+                if case let .messageEntry(rhsMessage, rhsMessages, _, rhsTheme, rhsStrings, rhsDateTimeFormat, rhsEditing, rhsHasRevealControls, rhsDisplayHeader, rhsMissed) = rhs {
                     if lhsTheme !== rhsTheme {
                         return false
                     }
@@ -197,8 +197,8 @@ func callListNodeEntriesForView(view: EngineCallList, groupCalls: [EnginePeer], 
     var result: [CallListNodeEntry] = []
     for entry in view.items {
         switch entry {
-            case let .message(topMessage, messages):
-                result.append(.messageEntry(topMessage: topMessage, messages: messages, theme: state.presentationData.theme, strings: state.presentationData.strings, dateTimeFormat: state.dateTimeFormat, editing: state.editing, hasActiveRevealControls: state.messageIdWithRevealedOptions == topMessage.id, displayHeader: !showSettings && isRecentCalls, missed: !isRecentCalls))
+            case let .message(topMessage, messages, worldClockText):
+                result.append(.messageEntry(topMessage: topMessage, messages: messages, worldClockText: worldClockText, theme: state.presentationData.theme, strings: state.presentationData.strings, dateTimeFormat: state.dateTimeFormat, editing: state.editing, hasActiveRevealControls: state.messageIdWithRevealedOptions == topMessage.id, displayHeader: !showSettings && isRecentCalls, missed: !isRecentCalls))
             case let .hole(index):
                 result.append(.holeEntry(index: index, theme: state.presentationData.theme))
         }

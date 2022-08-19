@@ -69,6 +69,7 @@ class CallListCallItem: ListViewItem {
     let style: ItemListStyle
     let topMessage: EngineMessage
     let messages: [EngineMessage]
+    let worldClockText: String
     let editing: Bool
     let revealed: Bool
     let interaction: CallListNodeInteraction
@@ -77,13 +78,14 @@ class CallListCallItem: ListViewItem {
     let headerAccessoryItem: ListViewAccessoryItem?
     let header: ListViewItemHeader?
     
-    init(presentationData: ItemListPresentationData, dateTimeFormat: PresentationDateTimeFormat, context: AccountContext, style: ItemListStyle, topMessage: EngineMessage, messages: [EngineMessage], editing: Bool, revealed: Bool, displayHeader: Bool, interaction: CallListNodeInteraction) {
+    init(presentationData: ItemListPresentationData, dateTimeFormat: PresentationDateTimeFormat, context: AccountContext, style: ItemListStyle, topMessage: EngineMessage, messages: [EngineMessage], worldClockText: String, editing: Bool, revealed: Bool, displayHeader: Bool, interaction: CallListNodeInteraction) {
         self.presentationData = presentationData
         self.dateTimeFormat = dateTimeFormat
         self.context = context
         self.style = style
         self.topMessage = topMessage
         self.messages = messages
+        self.worldClockText = worldClockText
         self.editing = editing
         self.revealed = revealed
         self.interaction = interaction
@@ -727,7 +729,7 @@ class CallListCallItemNode: ItemListRevealOptionsItemNode {
     
     @objc func infoPressed() {
         if let item = self.layoutParams?.0 {
-            item.interaction.openInfo(item.topMessage.id.peerId, item.messages)
+            item.interaction.openInfo(item.topMessage.id.peerId, item.messages, item.worldClockText)
         }
     }
     

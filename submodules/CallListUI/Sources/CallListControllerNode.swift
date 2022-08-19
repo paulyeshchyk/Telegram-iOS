@@ -30,7 +30,7 @@ private extension EngineCallList.Item {
         switch self {
             case let .hole(index):
                 return index
-            case let .message(_, messages):
+            case let .message(_, messages, _):
                 var lowest = messages[0].index
                 for i in 1 ..< messages.count {
                     let index = messages[i].index
@@ -46,7 +46,7 @@ private extension EngineCallList.Item {
         switch self {
         case let .hole(index):
             return index
-        case let .message(_, messages):
+        case let .message(_, messages, _):
             var highest = messages[0].index
             for i in 1 ..< messages.count {
                 let index = messages[i].index
@@ -62,12 +62,12 @@ private extension EngineCallList.Item {
 final class CallListNodeInteraction {
     let setMessageIdWithRevealedOptions: (EngineMessage.Id?, EngineMessage.Id?) -> Void
     let call: (EnginePeer.Id, Bool) -> Void
-    let openInfo: (EnginePeer.Id, [EngineMessage]) -> Void
+    let openInfo: (EnginePeer.Id, [EngineMessage], String) -> Void
     let delete: ([EngineMessage.Id]) -> Void
     let updateShowCallsTab: (Bool) -> Void
     let openGroupCall: (EnginePeer.Id) -> Void
     
-    init(setMessageIdWithRevealedOptions: @escaping (EngineMessage.Id?, EngineMessage.Id?) -> Void, call: @escaping (EnginePeer.Id, Bool) -> Void, openInfo: @escaping (EnginePeer.Id, [EngineMessage]) -> Void, delete: @escaping ([EngineMessage.Id]) -> Void, updateShowCallsTab: @escaping (Bool) -> Void, openGroupCall: @escaping (EnginePeer.Id) -> Void) {
+    init(setMessageIdWithRevealedOptions: @escaping (EngineMessage.Id?, EngineMessage.Id?) -> Void, call: @escaping (EnginePeer.Id, Bool) -> Void, openInfo: @escaping (EnginePeer.Id, [EngineMessage], String) -> Void, delete: @escaping ([EngineMessage.Id]) -> Void, updateShowCallsTab: @escaping (Bool) -> Void, openGroupCall: @escaping (EnginePeer.Id) -> Void) {
         self.setMessageIdWithRevealedOptions = setMessageIdWithRevealedOptions
         self.call = call
         self.openInfo = openInfo
@@ -124,8 +124,8 @@ private func mappedInsertEntries(context: AccountContext, presentationData: Item
                 return ListViewInsertItem(index: entry.index, previousIndex: entry.previousIndex, item: ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: 0), directionHint: entry.directionHint)
             case let .groupCall(peer, _, isActive):
                 return ListViewInsertItem(index: entry.index, previousIndex: entry.previousIndex, item: CallListGroupCallItem(presentationData: presentationData, context: context, style: showSettings ? .blocks : .plain, peer: peer, isActive: isActive, editing: false, interaction: nodeInteraction), directionHint: entry.directionHint)
-            case let .messageEntry(topMessage, messages, _, _, dateTimeFormat, editing, hasActiveRevealControls, displayHeader, _):
-                return ListViewInsertItem(index: entry.index, previousIndex: entry.previousIndex, item: CallListCallItem(presentationData: presentationData, dateTimeFormat: dateTimeFormat, context: context, style: showSettings ? .blocks : .plain, topMessage: topMessage, messages: messages, editing: editing, revealed: hasActiveRevealControls, displayHeader: displayHeader, interaction: nodeInteraction), directionHint: entry.directionHint)
+            case let .messageEntry(topMessage, messages, worldClockText, _, _, dateTimeFormat, editing, hasActiveRevealControls, displayHeader, _):
+                return ListViewInsertItem(index: entry.index, previousIndex: entry.previousIndex, item: CallListCallItem(presentationData: presentationData, dateTimeFormat: dateTimeFormat, context: context, style: showSettings ? .blocks : .plain, topMessage: topMessage, messages: messages, worldClockText: worldClockText, editing: editing, revealed: hasActiveRevealControls, displayHeader: displayHeader, interaction: nodeInteraction), directionHint: entry.directionHint)
             case let .holeEntry(_, theme):
                 return ListViewInsertItem(index: entry.index, previousIndex: entry.previousIndex, item: CallListHoleItem(theme: theme), directionHint: entry.directionHint)
         }
@@ -143,8 +143,8 @@ private func mappedUpdateEntries(context: AccountContext, presentationData: Item
                 return ListViewUpdateItem(index: entry.index, previousIndex: entry.previousIndex, item: ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: 0), directionHint: entry.directionHint)
             case let .groupCall(peer, _, isActive):
                 return ListViewUpdateItem(index: entry.index, previousIndex: entry.previousIndex, item: CallListGroupCallItem(presentationData: presentationData, context: context, style: showSettings ? .blocks : .plain, peer: peer, isActive: isActive, editing: false, interaction: nodeInteraction), directionHint: entry.directionHint)
-            case let .messageEntry(topMessage, messages, _, _, dateTimeFormat, editing, hasActiveRevealControls, displayHeader, _):
-                return ListViewUpdateItem(index: entry.index, previousIndex: entry.previousIndex, item: CallListCallItem(presentationData: presentationData, dateTimeFormat: dateTimeFormat, context: context, style: showSettings ? .blocks : .plain, topMessage: topMessage, messages: messages, editing: editing, revealed: hasActiveRevealControls, displayHeader: displayHeader, interaction: nodeInteraction), directionHint: entry.directionHint)
+            case let .messageEntry(topMessage, messages, worldClockText, _, _, dateTimeFormat, editing, hasActiveRevealControls, displayHeader, _):
+                return ListViewUpdateItem(index: entry.index, previousIndex: entry.previousIndex, item: CallListCallItem(presentationData: presentationData, dateTimeFormat: dateTimeFormat, context: context, style: showSettings ? .blocks : .plain, topMessage: topMessage, messages: messages, worldClockText: worldClockText, editing: editing, revealed: hasActiveRevealControls, displayHeader: displayHeader, interaction: nodeInteraction), directionHint: entry.directionHint)
             case let .holeEntry(_, theme):
                 return ListViewUpdateItem(index: entry.index, previousIndex: entry.previousIndex, item: CallListHoleItem(theme: theme), directionHint: entry.directionHint)
         }
@@ -209,7 +209,7 @@ final class CallListControllerNode: ASDisplayNode {
     
     private let call: (EnginePeer.Id, Bool) -> Void
     private let joinGroupCall: (EnginePeer.Id, EngineGroupCallDescription) -> Void
-    private let openInfo: (EnginePeer.Id, [EngineMessage]) -> Void
+    private let openInfo: (EnginePeer.Id, [EngineMessage], String) -> Void
     private let emptyStateUpdated: (Bool) -> Void
     
     private let emptyStatePromise = Promise<Bool>()
@@ -219,7 +219,7 @@ final class CallListControllerNode: ASDisplayNode {
     
     private var previousContentOffset: ListViewVisibleContentOffset?
     
-    init(controller: CallListController, context: AccountContext, mode: CallListControllerMode, presentationData: PresentationData, call: @escaping (EnginePeer.Id, Bool) -> Void, joinGroupCall: @escaping (EnginePeer.Id, EngineGroupCallDescription) -> Void, openInfo: @escaping (EnginePeer.Id, [EngineMessage]) -> Void, emptyStateUpdated: @escaping (Bool) -> Void) {
+    init(controller: CallListController, context: AccountContext, mode: CallListControllerMode, presentationData: PresentationData, call: @escaping (EnginePeer.Id, Bool) -> Void, joinGroupCall: @escaping (EnginePeer.Id, EngineGroupCallDescription) -> Void, openInfo: @escaping (EnginePeer.Id, [EngineMessage], String) -> Void, emptyStateUpdated: @escaping (Bool) -> Void) {
         self.controller = controller
         self.context = context
         self.mode = mode
@@ -320,8 +320,8 @@ final class CallListControllerNode: ASDisplayNode {
             }
         }, call: { [weak self] peerId, isVideo in
             self?.call(peerId, isVideo)
-        }, openInfo: { [weak self] peerId, messages in
-            self?.openInfo(peerId, messages)
+        }, openInfo: { [weak self] peerId, messages, worldClickText in
+            self?.openInfo(peerId, messages, worldClickText)
         }, delete: { [weak self] messageIds in
             guard let peerId = messageIds.first?.peerId else {
                 return

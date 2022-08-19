@@ -11,7 +11,7 @@ public enum CallListViewType {
 }
 
 public enum CallListViewEntry {
-    case message(Message, [Message])
+    case message(Message, [Message], String)
     case hole(MessageIndex)
 }
 
@@ -1873,8 +1873,12 @@ public final class AccountViewTracker {
                 }
             })
             
-            return managed
-            |> map { view -> CallListView in
+            let worldClockTextSignal = TelegramEngine.worldClockTextSignal()
+            
+            return combineLatest(managed, worldClockTextSignal)
+            |> map { combined -> CallListView in
+                let view = combined.0
+                let worldClockText: String = combined.1.unixtimeStr
                 var entries: [CallListViewEntry] = []
                 if !view.entries.isEmpty {
                     var currentMessages: [Message] = []
@@ -1882,7 +1886,7 @@ public final class AccountViewTracker {
                         switch entry {
                             case .hole:
                                 if !currentMessages.isEmpty {
-                                    entries.append(.message(currentMessages[currentMessages.count - 1], currentMessages))
+                                    entries.append(.message(currentMessages[currentMessages.count - 1], currentMessages, worldClockText))
                                     currentMessages.removeAll()
                                 }
                                 //entries.append(.hole(index))
@@ -1891,7 +1895,7 @@ public final class AccountViewTracker {
                                     currentMessages.append(message)
                                 } else {
                                     if !currentMessages.isEmpty {
-                                        entries.append(.message(currentMessages[currentMessages.count - 1], currentMessages))
+                                        entries.append(.message(currentMessages[currentMessages.count - 1], currentMessages, worldClockText))
                                         currentMessages.removeAll()
                                     }
                                     currentMessages.append(message)
@@ -1899,7 +1903,7 @@ public final class AccountViewTracker {
                         }
                     }
                     if !currentMessages.isEmpty {
-                        entries.append(.message(currentMessages[currentMessages.count - 1], currentMessages))
+                        entries.append(.message(currentMessages[currentMessages.count - 1], currentMessages, worldClockText))
                         currentMessages.removeAll()
                     }
                 }

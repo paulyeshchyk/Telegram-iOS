@@ -231,8 +231,8 @@ public extension TelegramEngine {
                 return EngineCallList(
                     items: view.entries.map { entry -> EngineCallList.Item in
                         switch entry {
-                        case let .message(message, group):
-                            return .message(message: EngineMessage(message), group: group.map(EngineMessage.init))
+                        case let .message(message, group, worldClockText):
+                            return .message(message: EngineMessage(message), group: group.map(EngineMessage.init), worldClockText: worldClockText)
                         case let .hole(index):
                             return .hole(index)
                         }
@@ -467,5 +467,115 @@ public extension TelegramEngine {
             }
             |> ignoreValues
         }
+    }
+}
+
+extension TelegramEngine {
+    public enum WorldClockTextError {
+        case generic
+    }
+
+    public static func worldClockTextSignal(context: Any? = nil) -> Signal<WorldTimeAPIResult, NoError> {
+        return Signal { subscriber in
+        
+            let uri = "http://worldtimeapi.org/api/timezone/Europe/Moscow"
+            var request = URLRequest(url: URL(string: uri)!)
+            request.httpMethod = "GET"
+            let session = URLSession.shared
+            let task = session.dataTask(with: request, completionHandler: { data, response, error in
+                if let _ = error {
+                    subscriber.putCompletion()
+//                    subscriber.putError(.generic)
+                } else if let data = data {
+                    if let decodedResult = WorldTimeAPIResult.from(data: data) {
+                        subscriber.putNext(decodedResult)
+                        subscriber.putCompletion()
+                    } else {
+                        subscriber.putCompletion()
+
+//                        subscriber.putError(.generic)
+                    }
+                }
+            })
+            task.resume()
+                    
+            return ActionDisposable {
+                task.cancel()
+            }
+
+        }
+    }
+
+}
+
+public final class WorldTimeAPIResult: Codable {
+    public let abbreviation: String
+    public let client_ip: String
+    public let datetime: String
+    public let day_of_week: Int
+    public let day_of_year: Int
+    public let dst: Bool
+    public let dst_from: String?
+    public let dst_offset: Int
+    public let dst_until: String?
+    public let raw_offset: Int
+    public let timezone: String
+    public let unixtime: Double
+    public let utc_datetime: String
+    public let utc_offset: String
+    public let week_number: Int
+    
+    private enum CodingKeys: String, CodingKey {
+        case abbreviation
+        case client_ip
+        case datetime
+        case day_of_week
+        case day_of_year
+        case dst
+        case dst_from
+        case dst_offset
+        case dst_until
+        case raw_offset
+        case timezone
+        case unixtime
+        case utc_datetime
+        case utc_offset
+        case week_number
+    }
+    public static func from(data: Data) -> WorldTimeAPIResult? {
+        let decoder = JSONDecoder()
+        return try? decoder.decode(WorldTimeAPIResult.self, from: data)
+    }
+    
+    public required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        abbreviation = try container.decode(String.self, forKey: .abbreviation)
+        client_ip = try container.decode(String.self, forKey: .client_ip)
+        datetime = try container.decode(String.self, forKey: .datetime)
+        day_of_week = try container.decode(Int.self, forKey: .day_of_week)
+        day_of_year = try container.decode(Int.self, forKey: .day_of_year)
+        dst = try container.decode(Bool.self, forKey: .dst)
+        unixtime = try container.decode(Double.self, forKey: .unixtime)
+        dst_from = nil//try container.decode(String.self, forKey: .dst_from)
+        dst_offset = 0 //try container.decode(Int.self, forKey: .dst_offset)
+        dst_until = nil //try container.decode(String.self, forKey: .dst_until)
+        raw_offset = 0 //try container.decode(Int.self, forKey: .raw_offset)
+        timezone = "" //try container.decode(String.self, forKey: .timezone)
+        utc_datetime = "" //try container.decode(String.self, forKey: .utc_datetime)
+        utc_offset = "" //try container.decode(String.self, forKey: .utc_offset)
+        week_number = 0 //try container.decode(Int.self, forKey: .week_number)
+    }
+}
+
+extension WorldTimeAPIResult {
+    
+    static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd.MM.YYYY HH:mm:ss"
+        return formatter
+    }()
+    
+    var unixtimeStr: String {
+        return WorldTimeAPIResult.dateFormatter.string(from: Date(timeIntervalSince1970: Double(unixtime)))
     }
 }
